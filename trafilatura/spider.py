@@ -4,6 +4,7 @@ Functions dedicated to website navigation and crawling/spidering.
 """
 
 import logging
+import re
 
 from configparser import ConfigParser
 from time import sleep
@@ -113,7 +114,7 @@ def refresh_detection(
     result = results[0] if results else ""
 
     if not result or ";" not in result:
-        logging.info("no redirect found: %s", homepage)
+        LOGGER.info("no redirect found: %s", homepage)
         return htmlstring, homepage
 
     url2 = result.split(";")[1].strip().lower().replace("url=", "")
@@ -124,10 +125,10 @@ def refresh_detection(
     # second fetch
     newhtmlstring = fetch_url(url2)
     if newhtmlstring is None:
-        logging.warning("failed redirect: %s", url2)
+        LOGGER.warning("failed redirect: %s", url2)
         return None, None
     # else:
-    logging.info("successful redirect: %s", url2)
+    LOGGER.info("successful redirect: %s", url2)
     return newhtmlstring, url2
 
 
@@ -141,8 +142,12 @@ def probe_alternative_homepage(
 
     # get redirected URL here?
     if response.url not in (homepage, "/"):
-        logging.info("followed homepage redirect: %s", response.url)
-        homepage = response.url
+        LOGGER.info("followed homepage redirect: %s", response.url)
+        if response.url.startswith("/") or response.url.startswith("?"):
+            homepage = re.sub(r"/$", "", homepage) + "/" + re.sub(r"^/", "", response.url)
+            LOGGER.info("adding base url before redirecting: %s", homepage)
+        else:
+            homepage = response.url
 
     # decode response
     htmlstring = decode_file(response.data)
@@ -152,7 +157,7 @@ def probe_alternative_homepage(
     if new_homepage is None:  # malformed or malicious content
         return None, None, None
 
-    logging.debug("fetching homepage OK: %s", new_homepage)
+    LOGGER.debug("fetching homepage OK: %s", new_homepage)
     return new_htmlstring, new_homepage, get_base_url(new_homepage)
 
 
