@@ -10,6 +10,7 @@ from configparser import ConfigParser
 from time import sleep
 from typing import List, Optional, Tuple
 from urllib.robotparser import RobotFileParser
+from urllib.parse import urlsplit
 
 from courlan import (
     UrlStore,
@@ -57,7 +58,7 @@ class CrawlParameters:
         self.base: str = self._get_base_url(start)
         self.ref: str = self._get_reference(start)
         self.lang: Optional[str] = lang
-        self.rules: Optional[RobotFileParser] = rules or get_rules(self.base)
+        self.rules: Optional[RobotFileParser] = rules
         self.i: int = 0
         self.known_num: int = 0
         self.is_on: bool = True
@@ -89,7 +90,7 @@ class CrawlParameters:
         "Run checks: robots.txt rules, URL type and crawl breadth."
         return (
             (not self.rules or self.rules.can_fetch("*", link))
-            and self.ref in link
+            and urlsplit(self.ref).netloc in link
             and not is_not_crawlable(link)
         )
 
@@ -121,6 +122,8 @@ def refresh_detection(
     if not url2.startswith("http"):
         # Relative URL, adapt
         base_url = get_base_url(url2)
+        if not base_url:
+            base_url = homepage
         url2 = fix_relative_urls(base_url, url2)
     # second fetch
     newhtmlstring = fetch_url(url2)
